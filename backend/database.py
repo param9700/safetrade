@@ -18,6 +18,16 @@ def create_tables():
         trust_score INTEGER DEFAULT 100
     )
     """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        price REAL NOT NULL,
+        seller_email TEXT NOT NULL,
+        FOREIGN KEY (seller_email) REFERENCES users(email)
+    )
+    """)
 
     conn.commit()
     conn.close()
