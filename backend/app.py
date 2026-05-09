@@ -9,12 +9,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mysecretkey123'
 
+# 🔥 IMPORTANT FOR RENDER
+create_tables()
+
 # ---------------- TOKEN DECORATOR ----------------
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
 
+        # Get token from Authorization header
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[1]
 
@@ -22,8 +26,14 @@ def token_required(f):
             return jsonify({"message": "Token missing"}), 401
 
         try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            data = jwt.decode(
+                token,
+                app.config['SECRET_KEY'],
+                algorithms=["HS256"]
+            )
+
             request.user_email = data["email"]
+
         except:
             return jsonify({"message": "Token invalid"}), 401
 
@@ -41,7 +51,9 @@ def home():
 # ---------------- REGISTER ----------------
 @app.route("/register", methods=["POST"])
 def register():
+
     data = request.json
+
     username = data["username"]
     email = data["email"]
     password = data["password"]
@@ -56,11 +68,17 @@ def register():
             "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
             (username, email, hashed_password)
         )
+
         conn.commit()
-        return jsonify({"message": "User registered successfully"}), 201
+
+        return jsonify({
+            "message": "User registered successfully"
+        }), 201
 
     except:
-        return jsonify({"message": "Email already registered"}), 400
+        return jsonify({
+            "message": "Email already registered"
+        }), 400
 
     finally:
         conn.close()
@@ -69,15 +87,22 @@ def register():
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["POST"])
 def login():
+
     data = request.json
+
     email = data["email"]
     password = data["password"]
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+    cursor.execute(
+        "SELECT * FROM users WHERE email = ?",
+        (email,)
+    )
+
     user = cursor.fetchone()
+
     conn.close()
 
     if user and check_password_hash(user["password"], password):
@@ -85,7 +110,9 @@ def login():
         token = jwt.encode({
             "email": email,
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
-        }, app.config['SECRET_KEY'], algorithm="HS256")
+        },
+        app.config['SECRET_KEY'],
+        algorithm="HS256")
 
         return jsonify({
             "message": "Login successful",
@@ -93,20 +120,23 @@ def login():
         }), 200
 
     else:
-        return jsonify({"message": "Invalid credentials"}), 401
+        return jsonify({
+            "message": "Invalid credentials"
+        }), 401
 
 
 # ---------------- ADD PRODUCT ----------------
 @app.route("/add_product", methods=["POST"])
 @token_required
 def add_product():
+
     data = request.json
 
     title = data["title"]
     description = data["description"]
     price = data["price"]
 
-    # 🔥 secure: use token email, NOT user input
+    # 🔥 seller email comes from JWT
     seller_email = request.user_email
 
     conn = get_db_connection()
@@ -120,7 +150,27 @@ def add_product():
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Product added successfully"}), 201
+    return jsonify({
+        "message": "Product added successfully"
+    }), 201
+
+
+# ---------------- GET PRODUCTS ----------------
+@app.route("/products", methods=["GET"])
+def get_products():
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM products")
+
+    products = cursor.fetchall()
+
+    conn.close()
+
+    product_list = [dict(product) for product in products]
+
+    return jsonify(product_list), 200
 
 
 # ---------------- DELETE PRODUCT ----------------
@@ -131,26 +181,41 @@ def delete_product(product_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM products WHERE id = ?", (product_id,))
+    cursor.execute(
+        "SELECT * FROM products WHERE id = ?",
+        (product_id,)
+    )
+
     product = cursor.fetchone()
 
     if not product:
         conn.close()
-        return jsonify({"message": "Product not found"}), 404
 
-    # 🔐 only owner can delete
+        return jsonify({
+            "message": "Product not found"
+        }), 404
+
+    # 🔥 only owner can delete
     if product["seller_email"] != request.user_email:
         conn.close()
-        return jsonify({"message": "Unauthorized"}), 403
 
-    cursor.execute("DELETE FROM products WHERE id = ?", (product_id,))
+        return jsonify({
+            "message": "Unauthorized"
+        }), 403
+
+    cursor.execute(
+        "DELETE FROM products WHERE id = ?",
+        (product_id,)
+    )
+
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Product deleted successfully"}), 200
+    return jsonify({
+        "message": "Product deleted successfully"
+    }), 200
 
 
 # ---------------- RUN SERVER ----------------
 if __name__ == "__main__":
-    create_tables()
     app.run(host="0.0.0.0", port=5000)
