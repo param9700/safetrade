@@ -1,5 +1,14 @@
 import requests
 
+delete_url = "http://127.0.0.1:5000/product/1"
+
+headers = {
+    "Authorization": f"Bearer {token}"
+}
+
+r = requests.delete(delete_url, headers=headers)
+print("Delete:", r.text)
+
 # -------- REGISTER TEST --------
 register_url = "http://127.0.0.1:5000/register"
 

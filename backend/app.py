@@ -2,13 +2,14 @@ import jwt
 import datetime
 from functools import wraps
 
-
 from flask import Flask, request, jsonify
 from database import create_tables, get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mysecretkey123'
 
+# ---------------- TOKEN DECORATOR ----------------
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -22,6 +23,7 @@ def token_required(f):
 
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            request.user_email = data["email"]
         except:
             return jsonify({"message": "Token invalid"}), 401
 
@@ -29,10 +31,12 @@ def token_required(f):
 
     return decorated
 
+
 # ---------------- HOME ----------------
 @app.route("/")
 def home():
     return "SafeTrade backend running!"
+
 
 # ---------------- REGISTER ----------------
 @app.route("/register", methods=["POST"])
@@ -55,11 +59,12 @@ def register():
         conn.commit()
         return jsonify({"message": "User registered successfully"}), 201
 
-    except Exception as e:
+    except:
         return jsonify({"message": "Email already registered"}), 400
 
     finally:
         conn.close()
+
 
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["POST"])
@@ -90,15 +95,19 @@ def login():
     else:
         return jsonify({"message": "Invalid credentials"}), 401
 
+
 # ---------------- ADD PRODUCT ----------------
 @app.route("/add_product", methods=["POST"])
 @token_required
 def add_product():
     data = request.json
+
     title = data["title"]
     description = data["description"]
     price = data["price"]
-    seller_email = data["seller_email"]
+
+    # 🔥 secure: use token email, NOT user input
+    seller_email = request.user_email
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -113,7 +122,35 @@ def add_product():
 
     return jsonify({"message": "Product added successfully"}), 201
 
+
+# ---------------- DELETE PRODUCT ----------------
+@app.route("/product/<int:product_id>", methods=["DELETE"])
+@token_required
+def delete_product(product_id):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM products WHERE id = ?", (product_id,))
+    product = cursor.fetchone()
+
+    if not product:
+        conn.close()
+        return jsonify({"message": "Product not found"}), 404
+
+    # 🔐 only owner can delete
+    if product["seller_email"] != request.user_email:
+        conn.close()
+        return jsonify({"message": "Unauthorized"}), 403
+
+    cursor.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Product deleted successfully"}), 200
+
+
 # ---------------- RUN SERVER ----------------
 if __name__ == "__main__":
     create_tables()
-    app.run(debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000)
