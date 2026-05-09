@@ -1,29 +1,20 @@
 import requests
 
-delete_url = "http://127.0.0.1:5000/product/1"
-
-headers = {
-    "Authorization": f"Bearer {token}"
-}
-
-r = requests.delete(delete_url, headers=headers)
-print("Delete:", r.text)
-
-# -------- REGISTER TEST --------
-register_url = "http://127.0.0.1:5000/register"
+# ---------------- REGISTER ----------------
+register_url = "https://safetrade-backend.onrender.com/register"
 
 register_data = {
     "username": "nigesh",
     "email": "paramr509@gmail.com",
     "password": "1234"
 }
-register_url = "http://127.0.0.1:5000/register"
-print("Trying to connect to:", register_url)
+
 r = requests.post(register_url, json=register_data)
 print("Register:", r.text)
 
-# -------- LOGIN TEST --------
-login_url = "http://127.0.0.1:5000/login"
+
+# ---------------- LOGIN ----------------
+login_url = "https://safetrade-backend.onrender.com/login"
 
 login_data = {
     "email": "paramr509@gmail.com",
@@ -31,26 +22,19 @@ login_data = {
 }
 
 r = requests.post(login_url, json=login_data)
-login_response = r.json()
 
-print("Login:", login_response)
+print("Raw Login Response:", r.text)
 
-token = login_response["token"]
 
-# -------- ADD PRODUCT TEST --------
-product_url = "http://127.0.0.1:5000/add_product"
+# ---------------- ADD PRODUCT ----------------
+product_url = "https://safetrade-backend.onrender.com/add_product"
 
 product_data = {
     "title": "Honda Activa",
     "description": "Good condition scooty",
-    "price": 35000,
-    "seller_email": "paramr509@gmail.com"
-}
-headers = {
-    "Authorization": f"Bearer {token}"
+    "price": 35000
 }
 
-r = requests.post(product_url, json=product_data, headers=headers)
+r = requests.post(product_url, json=product_data)
+
 print("Add Product:", r.text)
-
-
