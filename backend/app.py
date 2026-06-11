@@ -1,5 +1,6 @@
 import jwt
 import datetime
+from flask_cors import CORS
 from functools import wraps
 
 from flask import Flask, request, jsonify
@@ -7,6 +8,7 @@ from database import create_tables, get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+CORS(app)
 app.config['SECRET_KEY'] = 'mysecretkey123'
 
 # 🔥 IMPORTANT FOR RENDER
