@@ -217,6 +217,57 @@ def delete_product(product_id):
         "message": "Product deleted successfully"
     }), 200
 
+# ---------------- EDIT PRODUCT ----------------
+@app.route("/product/<int:id>", methods=["PUT"])
+@token_required
+def edit_product(id):
+
+    seller_email = request.user_email
+    data = request.json
+
+    title = data["title"]
+    description = data["description"]
+    price = data["price"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT * FROM products WHERE id = ?",
+        (id,)
+    )
+
+    product = cursor.fetchone()
+
+    if not product:
+        conn.close()
+        return jsonify({
+            "message": "Product not found"
+        }), 404
+
+    if product["seller_email"] != seller_email:
+        conn.close()
+        return jsonify({
+            "message": "Unauthorized"
+        }), 403
+
+    cursor.execute(
+        """
+        UPDATE products
+        SET title = ?, description = ?, price = ?
+        WHERE id = ?
+        """,
+        (title, description, price, id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message": "Product updated successfully"
+    }), 200
+
+
 
 # ---------------- RUN SERVER ----------------
 if __name__ == "__main__":
