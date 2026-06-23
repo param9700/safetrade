@@ -267,7 +267,29 @@ def edit_product(id):
         "message": "Product updated successfully"
     }), 200
 
+# ---------------- MY PRODUCTS ----------------
 
+@app.route("/my_products", methods=["GET"])
+@token_required
+def my_products():
+
+    seller_email = request.user_email
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT * FROM products WHERE seller_email = ?",
+        (seller_email,)
+    )
+
+    products = cursor.fetchall()
+
+    conn.close()
+
+    product_list = [dict(product) for product in products]
+
+    return jsonify(product_list), 200
 
 # ---------------- RUN SERVER ----------------
 if __name__ == "__main__":
